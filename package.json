@@ -1,6 +1,6 @@
 {
   "name": "react-native-optimizer",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "CLI tool to analyze and optimize React Native apps.",
   "main": "dist/index.js",
   "bin": {
@@ -9,7 +9,20 @@
   "scripts": {
     "build": "esbuild src/cli.ts --bundle --platform=node --outfile=dist/cli.js --minify --format=cjs",
     "dev": "ts-node src/cli.ts",
-    "release": "standard-version"
+    "release": "standard-version",
+    "test": "jest --coverage",
+    "prepublishOnly": "rm -rf unit"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "testMatch": [
+      "<rootDir>/unit/**/*.test.ts"
+    ],
+    "collectCoverageFrom": [
+      "src/**/*.ts",
+      "!src/__testdata__/**"
+    ]
   },
   "keywords": [
     "react-native",
@@ -20,17 +33,23 @@
   "author": "junaid saleem",
   "license": "MIT",
   "devDependencies": {
+    "@types/babel__traverse": "^7.28.0",
     "@types/chalk": "^0.4.31",
     "@types/commander": "^2.12.0",
+    "@types/jest": "^30.0.0",
     "@types/node": "^24.9.2",
     "@types/ora": "^3.1.0",
-    "esbuild": "^0.25.11",
-    "standard-version": "^9.5.0",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.9.3",
     "chalk": "^5.6.2",
     "commander": "^14.0.2",
-    "ora": "^9.0.0"
+    "esbuild": "^0.25.11",
+    "jest": "^30.2.0",
+    "ora": "^9.0.0",
+    "standard-version": "^9.5.0",
+    "ts-jest": "^29.4.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3",
+    "@babel/parser": "^7.28.5",
+    "@babel/traverse": "^7.28.5"
   },
   "dependencies": {},
   "repository": {

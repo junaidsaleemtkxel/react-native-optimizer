@@ -2,37 +2,160 @@
 
 [![npm version](https://badge.fury.io/js/react-native-optimizer.svg)](https://www.npmjs.com/package/react-native-optimizer)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Downloads](https://img.shields.io/npm/dm/react-native-optimizer.svg)](https://www.npmjs.com/package/react-native-optimizer)
 
-## Overview
-React Native Optimizer is a **production-grade CLI tool and TypeScript library** that provides comprehensive analysis for **React Native and Node.js projects**. It identifies unused code, analyzes package dependencies, detects deprecated packages, optimizes bundle size, and delivers enterprise-level code quality insights.
+> **Production-grade code analysis and optimization tool for React Native and Node.js projects**
 
-Built with **production-ready infrastructure** including performance monitoring, comprehensive error handling, configurable logging, and robust validation systems for enterprise environments.
+Automatically detect unused code, analyze package dependencies, find deprecated packages, and optimize your codebase with comprehensive reporting.
 
-**Supports both React Native and Node.js projects** with intelligent project type detection and framework-specific exclusions.
+## 🚀 Quick Start
 
-## ✨ Production-Grade Features
+### Installation
+```bash
+# Global installation (recommended for CLI usage)
+npm install -g react-native-optimizer
 
-### 🔍 **Core Analysis**
-- 🔍 **Unused Import Detection** - Find and remove unused imports using Babel AST parsing
-- 🗑️ **Code Debt Analysis** - Identify unused files that can be safely deleted  
-- 📦 **Package Analysis** - **NEW!** Detect unused packages and deprecated dependencies with npm registry integration
-- 🏗️ **Build Analysis** - Analyze bundle size, dependencies, and get optimization suggestions
-- 📊 **Project Statistics** - Get detailed insights about your project's size and complexity
+# Or use directly with npx (no installation required)
+npx react-native-optimizer analyze
+```
 
-### 🚀 **Enterprise Infrastructure**
-- ⚡ **Performance Monitoring** - Real-time metrics collection with detailed timing analysis
-- 🛡️ **Enterprise Error Handling** - Comprehensive error recovery with retry logic and exponential backoff  
-- 📝 **Advanced Logging** - Multi-level logging (ERROR, WARN, INFO, DEBUG) with configurable output
-- ✅ **Input Validation** - Robust project structure validation and parameter checking
-- ⚙️ **Configuration Management** - File-based configuration with package.json integration
-- 🔄 **Async Processing** - Non-blocking I/O with configurable concurrency limits
+### Basic Usage
+```bash
+# Analyze current project (includes package analysis + HTML report)
+npx rnopt analyze
 
-### 🎯 **Smart Analysis**
-- 🎯 **Smart Entry Point Detection** - Automatically excludes entry files from unused file reports
-- 🏗️ **Framework-Aware Analysis** - Detects React Native vs Node.js projects and applies appropriate rules
-- 🛡️ **Infrastructure File Protection** - Excludes middleware, services, config files, and type definitions
-- 🔗 **NPM Registry Integration** - Real-time package deprecation checking with caching and retries
-- 📈 **Interactive HTML Reports** - Beautiful reports with charts and dependency breakdowns
+# Quick analysis without HTML report
+npx rnopt analyze --no-html
+
+# Full analysis with build insights
+npx rnopt analyze --build --verbose
+```
+
+### What You Get
+- ✅ **Unused imports** detection across your entire codebase
+- ✅ **Unused files** identification to reduce code debt
+- ✅ **Package analysis** - find unused dependencies and deprecated packages
+- ✅ **Build analysis** - bundle size insights and optimization recommendations
+- ✅ **Beautiful HTML reports** with interactive charts and actionable insights
+
+## � Configuration
+
+### Project-level Configuration
+Create `.optimizerrc.json` in your project root:
+```json
+{
+  "includeBuildAnalysis": false,
+  "includePackageAnalysis": true,
+  "logLevel": "INFO",
+  "concurrencyLimit": 8,
+  "excludePatterns": [
+    "**/*.test.*",
+    "**/fixtures/**",
+    "**/__mocks__/**"
+  ]
+}
+```
+
+### Package.json Configuration  
+```json
+{
+  "reactNativeOptimizer": {
+    "excludePatterns": ["**/test/**"],
+    "includePackageAnalysis": true,
+    "logLevel": "WARN"
+  }
+}
+```
+
+## 🚀 CI/CD Integration
+
+### GitHub Actions
+```yaml
+name: Code Quality Check
+on: [push, pull_request]
+
+jobs:
+  quality-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Run code analysis
+        run: npx rnopt analyze --no-html --output analysis.json
+        
+      - name: Check results
+        run: |
+          node -e "
+            const r = require('./analysis.json');
+            const issues = r.unusedImports.length + r.unusedFiles.length;
+            const pkgIssues = r.packageAnalysis?.unusedPackages.length || 0;
+            if (issues > 5 || pkgIssues > 3) process.exit(1);
+          "
+```
+
+### Pre-commit Hook
+```bash
+# .husky/pre-commit
+npx rnopt analyze --no-html --no-open
+if [ $? -ne 0 ]; then
+  echo "❌ Code quality check failed. Fix issues before committing."
+  exit 1
+fi
+```
+```
+🔍 React Native Optimizer
+Analyzing project: my-react-native-app
+Project type: 📱 react-native
+────────────────────────────────────────────────────────────
+� Project Statistics                             
+   Files analyzed: 247 | Lines: 15,432 | Size: 892.4 KB | Time: 4.3s
+────────────────────────────────────────────────────────────
+⚠️  Unused Imports (3 files)
+   � src/components/Button.tsx → React, StyleSheet
+   📄 src/utils/helpers.ts → moment
+────────────────────────────────────────────────────────────
+�️  Unused Files (2 files, 3.2 KB wasted)
+   📄 src/old-component.tsx (2.3 KB)
+   📄 src/temp-utils.js (891 B)
+────────────────────────────────────────────────────────────
+📦 Package Analysis
+   �️  Unused: lodash@4.17.21 (540KB), moment@2.29.4 (288KB)
+   ⚠️  Deprecated: request@2.88.2 - use axios or fetch instead
+────────────────────────────────────────────────────────────
+💡 Recommendations
+   • Remove 5 unused imports to clean up code
+   • Delete 2 unused files to save 3.2KB  
+   • Uninstall 2 unused packages to save 828KB
+   • Update 1 deprecated package for security
+────────────────────────────────────────────────────────────
+✅ 8 optimization opportunities found!
+🌐 HTML report: ./optimizer-report.html
+```
+
+## � CLI Usage
+
+### Basic Commands
+```bash
+# Quick analysis with HTML report
+npx rnopt analyze
+
+# Analysis without HTML report
+npx rnopt analyze --no-html
+
+# Full analysis with build insights
+npx rnopt analyze --build --verbose
+
+# Skip package analysis (faster for large projects)
+npx rnopt analyze --no-packages
+
+# Custom output location
+npx rnopt analyze --output ./reports/analysis.json --html-path ./reports/report.html
 
 ## ✨ Features
 - 🔍 **Unused Import Detection** - Find and remove unused imports across your codebase
@@ -83,139 +206,104 @@ npx rnopt analyze --no-html
 # Generate HTML report but don't auto-open browser
 npx rnopt analyze --no-open
 
-# Skip package analysis (package analysis is included by default)
-npx rnopt analyze --no-packages
+# Force project type (auto-detected by default)
+npx rnopt analyze --type react-native
 
-# Complete analysis with all features and custom HTML path
-npx rnopt analyze --build --verbose --html-path ./custom-report.html
-
-# Save detailed report to JSON (still generates HTML by default)
-npx rnopt analyze --output report.json --build
-
-# Override project type detection
-npx rnopt analyze --type node
-
-# Show help
+# Show detailed help
 npx rnopt --help
 ```
 
-### TypeScript/JavaScript API
+### Available Options
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--build` | Include bundle size analysis | `false` |
+| `--no-html` | Skip HTML report generation | `false` |
+| `--no-open` | Don't auto-open HTML report | `false` |
+| `--no-packages` | Skip package dependency analysis | `false` |
+| `--verbose` | Show detailed analysis logs | `false` |
+| `--output <file>` | Save JSON report to file | - |
+| `--html-path <file>` | Custom HTML report location | `./optimizer-report.html` |
+| `--type <type>` | Force project type detection | `auto` |
+
+## 📚 API Usage
+
+### TypeScript/ES6
 ```typescript
-import { optimizeProject, generateHtmlReport, OptimizerResult } from 'react-native-optimizer';
+import { optimizeProject, generateHtmlReport } from 'react-native-optimizer';
 
-// Basic analysis with package checking (default)
-async function analyzeProject() {
-  const result: OptimizerResult = await optimizeProject(process.cwd());
-  
-  console.log(`📊 Project: ${result.projectType} (${result.projectPath})`);
-  console.log(`📊 Analyzed ${result.projectStats.totalFiles} files`);
-  console.log(`⚠️ Found ${result.unusedImports.length} files with unused imports`);
-  console.log(`🗑️ Found ${result.unusedFiles.length} unused files`);
-  
-  // NEW: Package analysis results
-  if (result.packageAnalysis) {
-    console.log(`📦 Found ${result.packageAnalysis.unusedPackages.length} unused packages`);
-    console.log(`⚠️ Found ${result.packageAnalysis.deprecatedPackages.length} deprecated packages`);
-    
-    // Show unused packages
-    result.packageAnalysis.unusedPackages.forEach(pkg => {
-      console.log(`📦 ${pkg.name}@${pkg.version} (${pkg.size} bytes)`);
-    });
-    
-    // Show deprecated packages
-    result.packageAnalysis.deprecatedPackages.forEach(pkg => {
-      console.log(`⚠️ ${pkg.name}@${pkg.version}: ${pkg.reason}`);
-    });
-  }
-  
-  // Access detailed results
-  result.unusedImports.forEach(item => {
-    console.log(`${item.file}: ${item.imports.join(', ')}`);
-  });
-}
+// Simple analysis
+const result = await optimizeProject('./my-project');
+console.log(`Found ${result.unusedImports.length} unused imports`);
+console.log(`Found ${result.packageAnalysis?.unusedPackages.length} unused packages`);
 
-// Advanced analysis with build insights and performance metrics
-async function analyzeProjectWithBuild() {
-  const result: OptimizerResult = await optimizeProject(process.cwd(), {
-    includeBuildAnalysis: true,
-    includePackageAnalysis: true // enabled by default
-  });
-  
-  // NEW: Performance metrics
-  if (result.performanceMetrics) {
-    console.log('📊 Performance Metrics:');
-    Object.entries(result.performanceMetrics).forEach(([operation, duration]) => {
-      console.log(`  ${operation}: ${duration}ms`);
-    });
-  }
-  
-  // Display build analysis if available
-  if (result.buildAnalysis) {
-    console.log(`📦 Bundle size: ${result.buildAnalysis.totalSize} bytes`);
-    console.log(`📂 Build path: ${result.buildAnalysis.buildPath}`);
-    console.log(`📊 JavaScript files: ${result.buildAnalysis.bundleBreakdown.javascript} bytes`);
-    
-    // Show largest dependencies
-    result.buildAnalysis.dependencies.slice(0, 5).forEach(dep => {
-      console.log(`📚 ${dep.name}: ${dep.size} bytes (${dep.files} files)`);
-    });
-    
-    // Show optimization suggestions
-    result.buildAnalysis.suggestions.forEach(suggestion => {
-      console.log(`💡 ${suggestion}`);
-    });
-  }
-}
-
-// Generate comprehensive HTML report
-async function generateComprehensiveReport() {
-  const result = await optimizeProject(process.cwd(), { 
-    includeBuildAnalysis: true 
-  });
-  
-  const htmlPath = generateHtmlReport(result, process.cwd());
-  console.log(`📄 Comprehensive report generated: ${htmlPath}`);
-  
-  return result;
-}
-
-analyzeProject();
+// Generate HTML report
+const reportPath = generateHtmlReport(result, './my-project');
+console.log(`Report saved to: ${reportPath}`);
 ```
 
-## 🛠️ CLI Options
-
-| Option | Description | Default | Example |
-|--------|-------------|---------|---------|
-| `--build` | Include build analysis (bundle size, dependencies) | `false` | `rnopt analyze --build` |
-| `--no-html` | Skip HTML report generation | `false` (HTML generated by default) | `rnopt analyze --no-html` |
-| `--no-open` | Skip auto-opening HTML report in browser | `false` (auto-opens by default) | `rnopt analyze --no-open` |
-| `--html-path` | Custom path for HTML report | `./optimizer-report.html` | `rnopt analyze --html-path ./custom.html` |
-| `--no-packages` | Skip package analysis | `false` (package analysis included by default) | `rnopt analyze --no-packages` |
-| `--verbose, -v` | Show detailed analysis information | `false` | `rnopt analyze -v` |
-| `--output, -o` | Save JSON report to file | `none` | `rnopt analyze -o report.json` |
-| `--type` | Override project type detection | `auto-detect` | `rnopt analyze --type node` |
-| `--help` | Show help information | - | `rnopt --help` |
-
-### JavaScript (CommonJS)
+### JavaScript/CommonJS
 ```javascript
 const { optimizeProject } = require('react-native-optimizer');
 
-optimizeProject(process.cwd())
+optimizeProject('./my-project')
   .then(result => {
-    console.log('Analysis complete!', result.projectStats);
-    
-    // NEW: Check package analysis results
-    if (result.packageAnalysis) {
-      console.log('Package issues:', {
-        unused: result.packageAnalysis.unusedPackages.length,
-        deprecated: result.packageAnalysis.deprecatedPackages.length
-      });
-    }
+    console.log('Analysis complete:', {
+      unusedImports: result.unusedImports.length,
+      unusedFiles: result.unusedFiles.length,
+      unusedPackages: result.packageAnalysis?.unusedPackages.length || 0
+    });
   })
-  .catch(error => {
-    console.error('Analysis failed:', error);
-  });
+  .catch(console.error);
 ```
+
+### Advanced Usage
+```typescript
+import { optimizeProject } from 'react-native-optimizer';
+
+const result = await optimizeProject('./my-project', {
+  includeBuildAnalysis: true,      // Bundle size analysis
+  includePackageAnalysis: true,    // Package dependency analysis (default: true)
+});
+
+// Access all analysis results
+if (result.success) {
+  console.log('� Project Stats:', result.projectStats);
+  console.log('⚠️ Unused Imports:', result.unusedImports);
+  console.log('�️ Unused Files:', result.unusedFiles);
+  console.log('� Package Issues:', result.packageAnalysis);
+  console.log('🏗️ Build Analysis:', result.buildAnalysis);
+  console.log('⚡ Performance:', result.performanceMetrics);
+}
+```
+
+## ✨ Features
+
+### � Code Analysis
+- **Unused Import Detection** - Find and remove unused imports using Babel AST parsing
+- **Unused File Detection** - Identify source files that aren't referenced anywhere
+- **Smart Entry Points** - Automatically excludes main entry files and config files
+- **TypeScript Support** - Full support for .ts, .tsx, .js, and .jsx files
+- **Framework Awareness** - Detects React Native vs Node.js projects with specific rules
+
+### 📦 Package Management
+- **Unused Package Detection** - Find dependencies that aren't actually used in code
+- **Deprecated Package Detection** - Check npm registry for deprecated packages
+- **Real-time NPM Integration** - Live API calls with caching and retry logic
+- **Size Estimation** - Calculate potential disk space savings
+- **Dependency Type Awareness** - Handles both dependencies and devDependencies
+
+### 🏗️ Build Analysis  
+- **Bundle Size Analysis** - Analyze your build output for optimization opportunities
+- **Dependency Breakdown** - See which packages contribute most to bundle size
+- **Asset Analysis** - JavaScript, images, fonts, and other asset categorization
+- **Optimization Suggestions** - Actionable recommendations for reducing bundle size
+
+### 📊 Reporting & Integration
+- **Interactive HTML Reports** - Beautiful reports with charts and actionable insights
+- **JSON Export** - Machine-readable reports for CI/CD integration
+- **Performance Metrics** - Detailed timing information for all operations
+- **Configurable Output** - Customize report location and format
+- **CI/CD Ready** - Fail builds based on code quality thresholds
 
 ## 📊 Example CLI Output
 ```
@@ -271,11 +359,48 @@ Project type: 📱 react-native
 🕐 Report generated at: 11/3/2025, 6:46:23 PM
 ```
 
-## 📋 API Response Structure
+## 📋 What Gets Analyzed
+
+### 📂 Project Types Supported
+- **React Native** - Metro config, platform directories (ios/android), native dependencies
+- **Node.js** - Express middleware, services, database schemas, API endpoints  
+- **Universal** - TypeScript/JavaScript files, imports, exports, package.json dependencies
+
+### 🔍 Code Analysis Rules
+
+#### Files Included
+- `.js`, `.jsx`, `.ts`, `.tsx` source files
+- Import/export statements and usage patterns
+- Package.json dependencies and devDependencies
+
+#### Files Excluded (Smart Filtering)
+- Test files (`*.test.*`, `*.spec.*`, `__tests__/**`)
+- Config files (`*.config.js`, `.eslintrc.*`, etc.)
+- Build outputs (`dist/`, `build/`, `node_modules/`)
+- Platform-specific files (`ios/`, `android/` for React Native)
+- Type definitions (`*.d.ts` files)
+
+### 📦 Package Analysis
+- **Unused Detection** - Scans all source code for actual package usage
+- **Deprecation Check** - Queries npm registry for deprecated package status
+- **Size Calculation** - Estimates disk space savings from cleanup
+- **Dependency Types** - Analyzes both `dependencies` and `devDependencies`
+
+## 📖 API Reference
+
+### Main Functions
+
+#### `optimizeProject(projectPath, options?)`
+Analyzes a project and returns optimization results.
+
 ```typescript
+interface OptimizeOptions {
+  includeBuildAnalysis?: boolean;    // Include bundle size analysis
+  includePackageAnalysis?: boolean; // Include package dependency analysis (default: true)
+}
+
 interface OptimizerResult {
   success: boolean;
-  projectPath: string;
   projectType: 'react-native' | 'node' | 'unknown';
   projectStats: {
     totalFiles: number;
@@ -283,250 +408,82 @@ interface OptimizerResult {
     totalSize: number;
     analysisTime: number;
   };
-  unusedImports: Array<{
-    file: string;
-    imports: string[];
-  }>;
-  unusedFiles: Array<{
-    path: string;
-    size: number;
-    lines: number;
-  }>;
-  
-  // NEW: Package Analysis
+  unusedImports: Array<{ file: string; imports: string[]; }>;
+  unusedFiles: Array<{ path: string; size: number; lines: number; }>;
   packageAnalysis?: {
-    unusedPackages: Array<{
-      name: string;
-      version: string;
-      size: number;
-      type: 'dependencies' | 'devDependencies';
-    }>;
-    deprecatedPackages: Array<{
-      name: string;
-      version: string;
-      reason: string;
-      type: 'dependencies' | 'devDependencies';
-    }>;
-    suggestions: string[];
+    unusedPackages: Array<{ name: string; version: string; size: number; }>;
+    deprecatedPackages: Array<{ name: string; version: string; reason: string; }>;
   };
-  
-  buildAnalysis?: {
-    buildPath: string;
-    totalSize: number;
-    files: Array<{
-      path: string;
-      size: number;
-      type: 'js' | 'image' | 'font' | 'map' | 'other';
-    }>;
-    largestFiles: Array<{ path: string; size: number }>;
-    dependencies: Array<{
-      name: string;
-      size: number;
-      files: number;
-    }>;
-    suggestions: string[];
-    bundleBreakdown: {
-      javascript: number;
-      images: number;
-      fonts: number;
-      maps: number;
-      other: number;
-    };
-  };
-  
-  // NEW: Production Infrastructure
-  performanceMetrics?: Record<string, number>;
-  configUsed?: any;
-  validationResult?: {
-    isValid: boolean;
-    errors: string[];
-    warnings: string[];
-    projectType: string;
-    hasPackageJson: boolean;
-    hasNodeModules: boolean;
-    hasSourceFiles: boolean;
-  };
-  
-  issues: string[];
   suggestions: string[];
-  reportGeneratedAt: Date;
+  issues: string[];
 }
 ```
 
-## 🎯 What It Analyzes
+#### `generateHtmlReport(result, projectPath, outputPath?)`
+Generates an interactive HTML report from analysis results.
 
-### Core Analysis
-- **Unused Imports**: Detects imports that are declared but never used in the code
-- **Unused Files**: Finds source files that aren't imported or referenced anywhere
-- **Entry Point Detection**: Smart detection of main entry files from package.json and common patterns
-- **TypeScript Support**: Full support for .ts, .tsx, .js, and .jsx files
-- **Extension Mapping**: Handles cases where .js imports map to .ts/.tsx files
-
-### 📦 Package Analysis (NEW!)
-- **Unused Package Detection**: Identifies packages in dependencies/devDependencies that aren't used in code
-- **Deprecated Package Detection**: Checks npm registry for deprecated packages with detailed reasons
-- **Real-time NPM Integration**: Live API calls to npm registry with caching and retry logic
-- **Size Calculation**: Estimates disk space savings from removing unused packages
-- **Dependency Type Awareness**: Distinguishes between dependencies and devDependencies
-- **Concurrent Processing**: Analyzes multiple packages simultaneously with rate limiting
-- **Registry Caching**: Caches npm registry responses to improve performance
-- **Retry Logic**: Handles network failures with exponential backoff
-
-### Framework-Specific Intelligence
-
-#### React Native Projects
-- **Config Files**: `metro.config.js`, `react-native.config.js`, `app.json`, etc.
-- **Build Scripts**: All files in `/scripts/` directory (font fixes, patches, linking tools)
-- **Platform Files**: `/android/` and `/ios/` directories
-- **Utility Scripts**: Files with patterns like `fix-*`, `link-*`, `patch-*`, `update-*`
-- **Mobile Entry Points**: React Native specific entry patterns and Expo configurations
-
-#### Node.js Projects  
-- **Config Files**: `.eslintrc.js`, `jest.config.js`, `webpack.config.js`, etc.
-- **Database/ORM**: Prisma seeds, migrations, TypeORM entities
-- **Middleware**: Express.js middleware in `/middleware/` directories
-- **Services**: Service layer files in `/services/` directories  
-- **Type Definitions**: All `.d.ts` files are excluded
-- **Test Setup**: Test configuration and setup files
-- **Security**: Authentication and security-related files
-
-## 🏗️ Production Infrastructure
-
-### Performance Monitoring
-- **Real-time Metrics**: Tracks timing for all major operations
-- **Memory Usage**: Monitors resource consumption during analysis
-- **Concurrent Operation Limits**: Configurable limits to prevent system overload (default: 8 concurrent operations)
-- **Performance Decorators**: Built-in decorators for function-level timing
-
-### Error Handling & Resilience  
-- **Custom Error Types**: Specialized error classes (OptimizerError, ValidationError, FileSystemError, NetworkError, ParseError)
-- **Retry Logic**: Exponential backoff for network operations (npm registry calls)
-- **Graceful Degradation**: Continues analysis even if some operations fail
-- **Comprehensive Logging**: Multi-level logging (ERROR, WARN, INFO, DEBUG) for debugging and monitoring
-
-### Validation & Configuration
-- **Input Validation**: Robust checking of all input parameters and project structure
-- **Configuration Management**: Support for `.optimizerrc.json` and package.json configuration
-- **Project Structure Validation**: Ensures project meets analysis requirements
-- **Type Safety**: Full TypeScript support with comprehensive type definitions
-
-## 🔧 Advanced Configuration
-
-### Configuration File (`.optimizerrc.json`)
-```json
-{
-  "includeBuildAnalysis": false,
-  "includePackageAnalysis": true,
-  "logLevel": "INFO",
-  "concurrencyLimit": 8,
-  "excludePatterns": [
-    "**/*.test.*",
-    "**/fixtures/**"
-  ],
-  "packageAnalysis": {
-    "checkDeprecated": true,
-    "npmRegistryUrl": "https://registry.npmjs.org",
-    "timeout": 5000,
-    "retries": 3
-  }
-}
+```typescript
+const reportPath = generateHtmlReport(result, './my-project', './custom-report.html');
 ```
 
-### Package.json Configuration
-```json
-{
-  "reactNativeOptimizer": {
-    "excludePatterns": ["**/test/**"],
-    "includePackageAnalysis": true,
-    "logLevel": "WARN"
-  }
-}
-```
+### CLI Commands
 
-## 🚀 CI/CD Integration
+| Command | Description |
+|---------|-------------|
+| `rnopt analyze` | Analyze current directory |
+| `rnopt analyze --build` | Include build size analysis |
+| `rnopt analyze --no-packages` | Skip package analysis |
+| `rnopt analyze --output report.json` | Save JSON report |
+| `rnopt --help` | Show help information |
 
-### GitHub Actions
-```yaml
-name: Code Quality Analysis
+## ❓ FAQ
 
-on: [push, pull_request]
+**Q: Will this tool modify my code?**  
+A: No, React Native Optimizer only analyzes and reports. It never modifies your source code automatically.
 
-jobs:
-  analyze:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-          
-      - name: Install dependencies
-        run: npm ci
-        
-      - name: Run React Native Optimizer
-        run: |
-          npx rnopt analyze --no-html --output optimization-report.json
-          
-      - name: Check Results
-        run: |
-          node -e "
-            const report = require('./optimization-report.json');
-            const issues = report.unusedImports.length + report.unusedFiles.length;
-            const packageIssues = report.packageAnalysis ? 
-              report.packageAnalysis.unusedPackages.length + 
-              report.packageAnalysis.deprecatedPackages.length : 0;
-            
-            console.log(\`Found \${issues} code issues and \${packageIssues} package issues\`);
-            
-            if (issues > 10 || packageIssues > 5) {
-              console.error('❌ Too many optimization issues found');
-              process.exit(1);
-            }
-            console.log('✅ Code quality check passed');
-          "
-          
-      - name: Upload Analysis Results
-        uses: actions/upload-artifact@v3
-        with:
-          name: optimization-report
-          path: optimization-report.json
-```
+**Q: How accurate is the unused code detection?**  
+A: Very accurate! We use Babel AST parsing instead of regex, which provides precise analysis of your code structure.
 
-### GitLab CI
-```yaml
-code-quality:
-  stage: test
-  script:
-    - npm ci
-    - npx rnopt analyze --no-html --output optimization-report.json
-    - node scripts/check-quality.js
-  artifacts:
-    reports:
-      junit: optimization-report.json
-    paths:
-      - optimization-report.json
-```
+**Q: Does it work with monorepos?**  
+A: Yes! Run the analyzer in each package directory, or use it at the root to analyze the entire monorepo.
+
+**Q: Can I customize what gets analyzed?**  
+A: Absolutely. Use `.optimizerrc.json` or package.json configuration to exclude patterns and customize analysis.
+
+**Q: Is it safe for production projects?**  
+A: Yes, it's read-only analysis with no code modifications. Many teams use it in their CI/CD pipelines.
 
 ## 🤝 Contributing
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+We welcome contributions! Here's how to get started:
+
+```bash
+# Clone and setup
+git clone https://github.com/junaidsaleemtkxel/react-native-optimizer
+cd react-native-optimizer
+npm install
+
+# Build and test
+npm run build
+npm test
+
+# Test your changes
+npx rnopt analyze ./test-project
+```
 
 ## 📄 License
+
 MIT © [Junaid Saleem](https://github.com/junaidsaleemtkxel)
 
-## 🙏 Acknowledgments
-- Built with [Babel](https://babeljs.io/) for accurate AST parsing
-- Powered by [Commander.js](https://github.com/tj/commander.js/) for CLI interface
-- Styled with [Chalk](https://github.com/chalk/chalk) for beautiful terminal output
-- Package analysis powered by [npm Registry API](https://registry.npmjs.org)
+## 🌟 Show Your Support
+
+If this tool helped optimize your project, please:
+- ⭐ Star the repository
+- 🐦 Share on Twitter
+- 📝 Write a review or blog post
+- 🤝 Contribute improvements
 
 ---
 
-**Ready for production?** 🚀 The React Native Optimizer provides enterprise-grade code analysis with comprehensive package management, performance monitoring, and robust error handling for mission-critical applications.
+**Built for developers, by developers** 🚀  
+*Helping teams ship cleaner, more efficient React Native and Node.js applications.*

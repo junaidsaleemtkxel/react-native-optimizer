@@ -1,6 +1,6 @@
 {
   "name": "react-native-optimizer",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "description": "🚀 Production-grade CLI tool and TypeScript library for analyzing React Native projects. Detects unused imports, dead code files, and provides detailed optimization insights using Babel AST parsing.",
   "main": "dist/index.js",
   "bin": {

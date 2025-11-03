@@ -1,17 +1,30 @@
 {
   "name": "react-native-optimizer",
-  "version": "0.0.10",
-  "description": "CLI tool to analyze and optimize React Native apps.",
+  "version": "0.0.13",
+  "description": "🚀 Production-grade CLI tool and TypeScript library for analyzing React Native projects. Detects unused imports, dead code files, and provides detailed optimization insights using Babel AST parsing.",
   "main": "dist/index.js",
   "bin": {
     "rnopt": "dist/cli.js"
   },
   "scripts": {
-    "build": "esbuild src/cli.ts --bundle --platform=node --outfile=dist/cli.js --minify --format=cjs",
+    "build": "npm run clean && npm run build:cli && npm run build:lib",
+    "build:cli": "esbuild src/cli.ts --bundle --platform=node --outfile=dist/cli.js --minify --format=cjs",
+    "build:lib": "esbuild src/index.ts --bundle --platform=node --outfile=dist/index.js --format=cjs",
+    "clean": "rm -rf dist",
     "dev": "ts-node src/cli.ts",
-    "release": "standard-version",
+    "lint": "tsc --noEmit",
+    "release": "npm run build && npm test && standard-version",
     "test": "jest --coverage",
-    "prepublishOnly": "rm -rf unit"
+    "test:watch": "jest --watch"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "CONTRIBUTING.md",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=16.0.0"
   },
   "jest": {
     "preset": "ts-jest",
@@ -26,12 +39,28 @@
   },
   "keywords": [
     "react-native",
-    "performance",
     "optimizer",
-    "cli"
+    "unused-imports",
+    "code-analysis",
+    "ast-parser",
+    "typescript",
+    "babel",
+    "cli-tool",
+    "performance",
+    "code-quality",
+    "dead-code",
+    "bundle-analyzer"
   ],
-  "author": "junaid saleem",
+  "author": {
+    "name": "Junaid Saleem",
+    "email": "junaidsaleem@tkxel.com",
+    "url": "https://github.com/junaidsaleemtkxel"
+  },
   "license": "MIT",
+  "homepage": "https://github.com/junaidsaleemtkxel/react-native-optimizer#readme",
+  "bugs": {
+    "url": "https://github.com/junaidsaleemtkxel/react-native-optimizer/issues"
+  },
   "devDependencies": {
     "@types/babel__traverse": "^7.28.0",
     "@types/chalk": "^0.4.31",

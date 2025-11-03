@@ -25,7 +25,8 @@ export const EXCLUDE_DIRS = [
   '.tmp',
   '.storybook',
   '.env',
-  '.DS_Store'
+  '.DS_Store',
+  '.*'
 ];
 
 // Recursively collect source files
@@ -50,40 +51,55 @@ export function getSourceFiles(dir: string, baseDir = dir): string[] {
 
 // Detect unused imports
 export function findUnusedImports(filePath: string): string[] {
-  const content = fs.readFileSync(filePath, 'utf8');
-
-  let ast;
   try {
-    ast = parse(content, {
-      sourceType: 'module',
-      plugins: ['jsx', 'typescript'],
+    if (!fs.existsSync(filePath)) {
+      return [];
+    }
+    
+    const content = fs.readFileSync(filePath, 'utf8');
+    
+    // Skip empty files
+    if (!content.trim()) {
+      return [];
+    }
+
+    let ast;
+    try {
+      ast = parse(content, {
+        sourceType: 'module',
+        plugins: ['jsx', 'typescript', 'classProperties', 'objectRestSpread', 'decorators-legacy'],
+      });
+    } catch (parseError) {
+      // If parsing fails, skip this file
+      return [];
+    }
+    
+    const imported: Record<string, true> = {};
+    const used: Record<string, true> = {};
+
+    traverse(ast, {
+      ImportDeclaration({ node }) {
+        for (const spec of node.specifiers) {
+          imported[spec.local.name] = true;
+        }
+      },
+      Identifier({ node, parent }) {
+        if (
+          imported[node.name] &&
+          parent.type !== 'ImportSpecifier' &&
+          parent.type !== 'ImportDefaultSpecifier' &&
+          parent.type !== 'ImportNamespaceSpecifier'
+        ) {
+          used[node.name] = true;
+        }
+      },
     });
-  } catch {
+
+    return Object.keys(imported).filter(name => !used[name]);
+  } catch (error) {
+    // If any error occurs, return empty array
     return [];
   }
-
-  const imported: Record<string, true> = {};
-  const used: Record<string, true> = {};
-
-  traverse(ast, {
-    ImportDeclaration({ node }) {
-      for (const spec of node.specifiers) {
-        imported[spec.local.name] = true;
-      }
-    },
-    Identifier({ node, parent }) {
-      if (
-        imported[node.name] &&
-        parent.type !== 'ImportSpecifier' &&
-        parent.type !== 'ImportDefaultSpecifier' &&
-        parent.type !== 'ImportNamespaceSpecifier'
-      ) {
-        used[node.name] = true;
-      }
-    },
-  });
-
-  return Object.keys(imported).filter(name => !used[name]);
 }
 
 // Example usage

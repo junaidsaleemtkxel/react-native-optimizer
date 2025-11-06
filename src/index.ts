@@ -49,7 +49,7 @@ export interface OptimizerResult {
 import { runAnalysis } from './analyze';
 import { generateHtmlReport } from './htmlReport';
 import { analyzeBuild, BuildAnalysisResult } from './buildAnalyzer';
-import { analyzePackages, PackageAnalysisResult } from './packageAnalyzer';
+import { analyzePackages, PackageAnalysisResult, ProgressCallback, ProgressInfo } from './packageAnalyzer';
 import { getSourceFiles } from './unusedImports';
 
 function detectProjectType(projectPath: string): 'react-native' | 'node' | 'unknown' {
@@ -127,7 +127,8 @@ export interface OptimizeProjectOptions {
 
 export async function optimizeProject(
 	projectPath: string, 
-	options: OptimizeProjectOptions = {}
+	options: OptimizeProjectOptions = {},
+	progressCallback?: ProgressCallback
 ): Promise<OptimizerResult> {
 	performanceMonitor.start('optimizeProject');
 	const startTime = Date.now();
@@ -171,11 +172,56 @@ export async function optimizeProject(
 			includePackageAnalysis = config.packageAnalysis.enabled
 		} = options;
 		
+		// Track total modules for progress calculation
+		const totalModules = 8;
+		let currentModule = 0;
+		
+		const updateProgress = (
+			module: 'initialization' | 'source-scan' | 'unused-imports' | 'unused-files' | 'package-analysis' | 'framework-detection' | 'deprecated-check' | 'finalization' | 'project-stats', 
+			stage: string, 
+			percentage: number = 0, 
+			current: number = 0, 
+			total: number = 0, 
+			currentItem?: string
+		) => {
+			if (progressCallback) {
+				const overallPercentage = Math.round(((currentModule + percentage / 100) / totalModules) * 100);
+				progressCallback({
+					module: module === 'project-stats' ? 'finalization' : module, // Map project-stats to finalization
+					stage,
+					current,
+					total,
+					percentage: overallPercentage,
+					currentItem,
+					timeElapsed: Math.round((Date.now() - startTime) / 1000),
+					estimatedTimeRemaining: overallPercentage > 0 ? Math.round(((Date.now() - startTime) / (overallPercentage / 100) - (Date.now() - startTime)) / 1000) : undefined,
+					moduleProgress: {
+						currentModule: currentModule + 1,
+						totalModules,
+						modulePercentage: Math.round(percentage)
+					}
+				});
+			}
+		};
+
+		// Module 1: Initialization
+		currentModule = 0;
+		updateProgress('initialization', 'Initializing project analysis...', 100);
+		
+		// Module 2: Source Scanning
+		currentModule = 1;
+		updateProgress('source-scan', 'Scanning source files...', 0);
 		performanceMonitor.start('codeAnalysis');
+		const allFiles = getSourceFiles(projectPath);
+		updateProgress('source-scan', 'Found source files', 50, allFiles.length, allFiles.length);
+		
 		const { unusedImports: unusedImportsReport, unusedFiles } = await runAnalysis(projectPath);
+		updateProgress('source-scan', 'Source analysis complete', 100);
 		performanceMonitor.end('codeAnalysis');
 		
-		// Parse unused imports into structured format
+		// Module 3: Import Analysis  
+		currentModule = 2;
+		updateProgress('unused-imports', 'Analyzing unused imports...', 0);
 		const unusedImports: UnusedImport[] = unusedImportsReport.map(report => {
 			const [file, imports] = report.split(': ');
 			return {
@@ -183,60 +229,95 @@ export async function optimizeProject(
 				imports: imports.split(', ')
 			};
 		});
+		updateProgress('unused-imports', 'Import analysis complete', 100, unusedImports.length, unusedImports.length);
 		
-		// Get file stats for unused files
+		// Module 4: File Analysis
+		currentModule = 3; 
+		updateProgress('unused-files', 'Analyzing unused files...', 0);
 		const unusedFileStats: FileStats[] = unusedFiles.map(file => {
 			const fullPath = path.resolve(projectPath, file);
 			return getFileStats(fullPath, projectPath);
 		});
+		updateProgress('unused-files', 'File analysis complete', 100, unusedFiles.length, unusedFiles.length);
 		
-		// Calculate project stats
+		// Module 5: Project Statistics
+		currentModule = 4;
+		updateProgress('project-stats', 'Calculating project statistics...', 0);
 		performanceMonitor.start('projectStats');
-		const allFiles = getSourceFiles(projectPath);
 		let totalLines = 0;
 		let totalSize = 0;
 		
-		for (const file of allFiles) {
+		for (let i = 0; i < allFiles.length; i++) {
 			try {
+				const file = allFiles[i];
 				const fullPath = path.resolve(projectPath, file);
 				const stats = getFileStats(fullPath, projectPath);
 				totalLines += stats.lines;
 				totalSize += stats.size;
+				updateProgress('project-stats', 'Calculating statistics...', (i / allFiles.length) * 100, i + 1, allFiles.length, file);
 			} catch (e) {
 				// Skip files that can't be read
-				logger.debug(`Skipping unreadable file: ${file}`);
+				logger.debug(`Skipping unreadable file: ${allFiles[i]}`);
 			}
 		}
 		performanceMonitor.end('projectStats');
+		updateProgress('project-stats', 'Statistics complete', 100);
 		
-		// Analyze build if requested
+		// Module 6: Build Analysis
+		currentModule = 5;
 		let buildAnalysis: BuildAnalysisResult | undefined;
 		if (includeBuildAnalysis) {
+			updateProgress('framework-detection', 'Analyzing build configuration...', 0);
 			performanceMonitor.start('buildAnalysis');
 			try {
 				const buildResult = await analyzeBuild(projectPath);
 				buildAnalysis = buildResult || undefined;
+				updateProgress('framework-detection', 'Build analysis complete', 100);
 			} catch (error) {
 				const optimizerError = handleError(error, 'buildAnalysis');
 				logger.warn('Build analysis failed:', optimizerError.message);
+				updateProgress('framework-detection', 'Build analysis skipped', 100);
 			} finally {
 				performanceMonitor.end('buildAnalysis');
 			}
+		} else {
+			updateProgress('framework-detection', 'Build analysis skipped', 100);
 		}
 		
-		// Analyze packages 
+		// Module 7: Package Analysis 
+		currentModule = 6;
 		let packageAnalysis: PackageAnalysisResult | undefined;
 		if (includePackageAnalysis) {
 			performanceMonitor.start('packageAnalysis');
 			try {
-				packageAnalysis = await analyzePackages(projectPath);
+				// Create a wrapper callback that updates the current module
+				const packageProgressCallback = progressCallback ? (progress: ProgressInfo) => {
+					const updatedProgress = {
+						...progress,
+						moduleProgress: progress.moduleProgress ? {
+							...progress.moduleProgress,
+							currentModule: currentModule + 1,
+							totalModules
+						} : undefined
+					};
+					progressCallback(updatedProgress);
+				} : undefined;
+				
+				packageAnalysis = await analyzePackages(projectPath, packageProgressCallback);
 			} catch (error) {
 				const optimizerError = handleError(error, 'packageAnalysis');
 				logger.warn('Package analysis failed:', optimizerError.message);
+				updateProgress('package-analysis', 'Package analysis failed', 100);
 			} finally {
 				performanceMonitor.end('packageAnalysis');
 			}
+		} else {
+			updateProgress('package-analysis', 'Package analysis skipped', 100);
 		}
+		
+		// Module 8: Finalization
+		currentModule = 7;
+		updateProgress('finalization', 'Finalizing analysis...', 100);
 		
 		const analysisTime = Date.now() - startTime;
 		
@@ -338,7 +419,7 @@ export async function generateReport(projectPath: string, options: {
 
 // Export all analysis functions and types
 export { generateHtmlReport };
-export { analyzePackages };
+export { analyzePackages, ProgressCallback, ProgressInfo };
 export { getSourceFiles };
 export type { UnusedPackage, DeprecatedPackage, PackageAnalysisResult } from './packageAnalyzer';
 export type { BuildAnalysisResult } from './buildAnalyzer';

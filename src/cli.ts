@@ -93,16 +93,132 @@ program
     console.log(chalk.gray(`Project type: ${typeEmoji} ${chalk.white(projectType)}`));
     printSeparator();
     
-    // Show spinner/progress
-    process.stdout.write(chalk.yellow('⏳ Analyzing project... '));
+    // Show enhanced modular progress with better user engagement
+    let lastProgressLine = '';
+    let lastModule = '';
+    
+    const progressCallback = (progress: any) => {
+      const { 
+        module, stage, current, total, percentage, currentItem, 
+        timeElapsed, estimatedTimeRemaining, moduleProgress 
+      } = progress;
+      
+      // Create overall progress bar
+      const overallBarLength = 30;
+      const overallFilled = Math.round((percentage / 100) * overallBarLength);
+      const overallBar = '█'.repeat(overallFilled) + '░'.repeat(overallBarLength - overallFilled);
+      
+      // Create module progress bar
+      const modulePercent = moduleProgress?.modulePercentage || 0;
+      const moduleBarLength = 15;
+      const moduleFilled = Math.round((modulePercent / 100) * moduleBarLength);
+      const moduleBar = '▓'.repeat(moduleFilled) + '░'.repeat(moduleBarLength - moduleFilled);
+      
+      // Format timing info
+      const elapsed = timeElapsed ? `${timeElapsed}s` : '--';
+      const remaining = estimatedTimeRemaining && estimatedTimeRemaining > 0 ? `~${estimatedTimeRemaining}s` : '';
+      
+      // Module status indicator
+      const moduleStatus = moduleProgress ? `[${moduleProgress.currentModule}/${moduleProgress.totalModules}]` : '';
+      
+      // Create main progress line
+      let progressLine = `${chalk.cyan('🔄')} ${chalk.bold.white('Overall Progress')} ${chalk.cyan(`[${overallBar}]`)} ${chalk.bold.white(`${percentage}%`)}`;
+      
+      if (remaining) {
+        progressLine += ` ${chalk.gray(`(${remaining} remaining)`)}`;
+      } else {
+        progressLine += ` ${chalk.gray(`(${elapsed} elapsed)`)}`;
+      }
+      
+      // Add module-specific line
+      progressLine += `\n${chalk.yellow('📋')} ${chalk.white(stage)}`;
+      
+      if (moduleProgress && modulePercent < 100) {
+        progressLine += ` ${chalk.yellow(`[${moduleBar}]`)} ${chalk.white(`${modulePercent}%`)}`;
+      }
+      
+      if (current > 0 && total > 1) {
+        progressLine += ` ${chalk.gray(`(${current.toLocaleString()}/${total.toLocaleString()})`)}`;
+      }
+      
+      if (moduleStatus) {
+        progressLine += ` ${chalk.gray(moduleStatus)}`;
+      }
+      
+      // Add current item being processed
+      if (currentItem) {
+        const displayItem = currentItem.length > 35 ? '...' + currentItem.slice(-32) : currentItem;
+        progressLine += `\n${chalk.gray('   → ' + displayItem)}`;
+      }
+      
+      // Show module transition
+      if (module !== lastModule && lastModule) {
+        const moduleNames: Record<string, string> = {
+          'initialization': 'Initialization',
+          'source-scan': 'Source Scanning', 
+          'unused-imports': 'Import Analysis',
+          'unused-files': 'File Analysis',
+          'framework-detection': 'Framework Detection',
+          'package-analysis': 'Package Analysis',
+          'deprecated-check': 'Deprecation Check',
+          'finalization': 'Finalization'
+        };
+        const moduleName = moduleNames[module] || module;
+        progressLine += `\n${chalk.green('✓')} ${chalk.gray('Starting ' + moduleName + '...')}`;
+      }
+      
+      lastModule = module;
+      
+      // Clear previous output and display new progress
+      if (lastProgressLine) {
+        const linesToClear = (lastProgressLine.match(/\n/g) || []).length + 1;
+        process.stdout.write('\r\x1b[2K'); // Clear current line
+        for (let i = 0; i < linesToClear; i++) {
+          process.stdout.write('\x1b[1A\x1b[2K'); // Move cursor up and clear line
+        }
+      }
+      
+      process.stdout.write(progressLine);
+      lastProgressLine = progressLine;
+    };
     
     const result = await optimizeProject(projectPath, { 
       includeBuildAnalysis: options.build,
-      includePackageAnalysis: options.packages !== false // Include by default, unless --no-packages is used
-    });
+      includePackageAnalysis: options.packages !== false
+    }, progressCallback);
     
-    // Clear progress line
-    process.stdout.write('\r' + ' '.repeat(50) + '\r');
+    // Show final completion progress
+    if (progressCallback) {
+      progressCallback({
+        module: 'finalization',
+        stage: 'Analysis complete',
+        current: 100,
+        total: 100,
+        percentage: 100,
+        timeElapsed: Math.round((Date.now() - Date.now()) / 1000), // This will be updated by the progress tracker
+        moduleProgress: {
+          currentModule: 8,
+          totalModules: 8,
+          modulePercentage: 100
+        }
+      });
+    }
+    
+    // Clear progress lines more thoroughly and reset
+    if (lastProgressLine) {
+      const linesToClear = (lastProgressLine.match(/\n/g) || []).length + 1;
+      // Clear current line first
+      process.stdout.write('\r\x1b[2K');
+      // Clear all progress lines + some buffer
+      for (let i = 0; i < linesToClear + 5; i++) { // Clear extra lines for safety
+        process.stdout.write('\x1b[1A\x1b[2K');
+      }
+      // Reset progress tracking
+      lastProgressLine = '';
+    }
+    
+    // Add a clean newline to separate from any remaining artifacts
+    console.log('');
     
     if (!result.success) {
       console.log(chalk.red.bold('\n❌ Analysis Failed'));
